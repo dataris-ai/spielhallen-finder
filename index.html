@@ -108,7 +108,7 @@
         <label class="tg"><input type="checkbox" id="tgInd" onchange="renderZones()"><span class="swatch" style="background:rgba(240,163,56,.5)"></span>Industriegebiete (meist nicht)</label>
         <label class="tg"><input type="checkbox" id="tgRes" onchange="renderZones()"><span class="swatch" style="background:rgba(229,72,77,.5)"></span>Wohngebiete (baurechtlich ausgeschlossen)</label>
         <label class="tg"><input type="checkbox" id="tgPot" checked onchange="renderZones()"><span class="swatch" style="background:rgba(55,182,214,.5)"></span>Potenzialflächen (Brache/Bau – prüfen)</label>
-        <label class="tg"><input type="checkbox" id="tgSch" checked onchange="refresh()"><span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schulen/Kitas (Jugendschutz)</label>
+        <label class="tg"><input type="checkbox" id="tgSch" onchange="toggleSchools()"><span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schulen/Kitas laden (Jugendschutz)</label>
         <label class="tg"><input type="checkbox" id="tgSat" onchange="setBase()">Luftbild statt Karte</label>
       </div>
 
@@ -318,13 +318,13 @@ async function goSearch(){
   }catch(e){}
   const key=norm(raw);
   if(CITIES[key]){lastCity=raw;updateCityInfo(raw,'');map.setView(CITIES[key],14);hint.textContent='';setTimeout(analyze,250);return;}
-  hint.textContent='Stadt nicht gefunden (oder Online-Suche im Vorschaufenster blockiert). Lokal/auf Vercel klappt jede Stadt.';
+  hint.textContent='Stadt nicht gefunden – bitte genauer schreiben (z. B. „Nördlingen").';
 }
 document.getElementById('searchBox').addEventListener('keydown',e=>{if(e.key==='Enter')goSearch();});
 
 async function overpass(q){
-  const eps=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
-  for(const ep of eps){try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q)});if(r.ok)return await r.json();}catch(e){}}
+  const eps=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+  for(const ep of eps){try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q)});if(r.ok){const j=await r.json();if(j&&j.elements)return j;}}catch(e){}}
   throw new Error('overpass');
 }
 
@@ -332,7 +332,9 @@ async function analyze(){
   if(map.getZoom()<10)map.setZoom(10);
   setStatus('Lädt Spielhallen & Gebiete für <b>'+lastCity+'</b> …');
   const b=map.getBounds();const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb});node["amenity"~"^(school|kindergarten|college)$"](${bb});way["amenity"~"^(school|kindergarten|college)$"](${bb}););out center tags;way["landuse"~"^(commercial|retail|industrial|residential|brownfield|construction)$"](${bb});out geom tags;`;
+  const wantSch=document.getElementById('tgSch').checked; // Schulen/Kitas nur laden, wenn aktiv – hält die Abfrage leicht
+  const schQ=wantSch?`node["amenity"~"^(school|kindergarten|college)$"](${bb});way["amenity"~"^(school|kindergarten|college)$"](${bb});`:'';
+  const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb});${schQ});out center tags;way["landuse"~"^(commercial|retail|industrial|residential|brownfield|construction)$"](${bb});out geom tags;`;
   try{
     const j=await overpass(q);
     const base=halls.filter(h=>h.source==='seed'||h.source==='manual'); // kuratierte bleiben, OSM ergänzt
@@ -355,11 +357,11 @@ async function analyze(){
     if(newZones.length)zones=newZones;
     const nGreen=zones.filter(z=>z.lu==='commercial'||z.lu==='retail').length;
     const nSch=sens.filter(s=>s.source==='osm').length;
-    setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete · ${nSch} Schulen/Kitas.`);
+    setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete`+(wantSch?` · ${nSch} Schulen/Kitas`:'')+'.');
     refresh();
   }catch(e){
     refresh();
-    setStatus('⚠ Live-Daten werden hier im Vorschaufenster blockiert. <b>Lokal öffnen / auf Vercel hosten</b>, dann lädt jede Stadt automatisch. Vorgeladene Region + Prüfung funktionieren hier trotzdem.');
+    setStatus('⚠ OSM-Live-Daten gerade nicht erreichbar (Server ausgelastet/Zeitlimit). <a href="#" onclick="analyze();return false" style="color:var(--accent)">Erneut versuchen</a> – oder in die Zielstadt hineinzoomen, kleinere Ausschnitte laden zuverlässiger. Vorgeladene Spielhallen + Standortprüfung funktionieren weiter.');
   }
 }
 
@@ -382,7 +384,7 @@ function bauVerdict(zone,kgt){switch(zone){
 function armAdd(t){pendingAdd=t;document.getElementById('armHint').textContent=t==='hall'?'Jetzt in die Karte tippen, um eine Spielhalle zu setzen.':'Jetzt in die Karte tippen, um eine Schule/Kita zu setzen.';}
 map.on('click',e=>{const p={lat:e.latlng.lat,lng:e.latlng.lng};
   if(pendingAdd==='hall'){halls.push({id:uid++,name:'Spielhalle '+(halls.length+1),lat:p.lat,lng:p.lng,source:'manual'});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
-  else if(pendingAdd==='sens'){sens.push({id:uid++,name:'Schule/Kita '+(sens.length+1),lat:p.lat,lng:p.lng,source:'manual'});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
+  else if(pendingAdd==='sens'){sens.push({id:uid++,name:'Schule/Kita '+(sens.length+1),lat:p.lat,lng:p.lng,source:'manual'});document.getElementById('tgSch').checked=true;pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
   else setActive(p);
 });
 
@@ -482,6 +484,10 @@ function applyLand(){const v=document.getElementById('land').value;
   // Nur BaWü schreibt einen Abstand zu Einrichtungen für Minderjährige vor (500 m); sonst 0 (Punkte bleiben zur Info sichtbar)
   document.getElementById('schoolDist').value=v.indexOf('BW')===0?500:0;
   refresh();}
+function toggleSchools(){
+  if(document.getElementById('tgSch').checked)analyze(); // lädt Schulen/Kitas live für den aktuellen Ausschnitt
+  else{sens=sens.filter(s=>s.source!=='osm');refresh();}
+}
 function exportData(){const fc={type:'FeatureCollection',meta:{stadt:lastCity,mindestabstand_m:getMin()},features:[]};
   halls.forEach(h=>fc.features.push({type:'Feature',properties:{kategorie:'spielhalle',name:h.name,quelle:h.source},geometry:{type:'Point',coordinates:[h.lng,h.lat]}}));
   cands.forEach(c=>{const st=candStatus(c);fc.features.push({type:'Feature',properties:{kategorie:'standort',name:c.name,baugebiet:c.zone||'',abstand_m:st.d!=null?Math.round(st.d):null,bewertung:st.s},geometry:{type:'Point',coordinates:[c.lng,c.lat]}});});
