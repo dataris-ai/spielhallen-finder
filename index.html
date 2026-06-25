@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spielhallen-Standortfinder</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{--bg:#0e1419;--panel:#151e27;--panel2:#1b2731;--line:#27343f;--text:#e7eef4;--muted:#8ea4b4;--accent:#37b6d6;--red:#e5484d;--green:#3fb377;--amber:#f0a338}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%}
+  #app{display:flex;height:100vh;width:100vw;overflow:hidden}
+  #panel{width:360px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100%}
+  #panelScroll{overflow-y:auto;padding:16px;flex:1}
+  h1{font-size:16px;margin:0 0 2px}
+  .sub{font-size:12px;color:var(--muted);margin:0 0 14px;line-height:1.4}
+  .block{margin-bottom:15px}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:7px;font-weight:600}
+  .row{display:flex;gap:8px}
+  input,select,button{font-family:inherit;font-size:13px}
+  input[type=text],input[type=number],select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  button{cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:8px;padding:10px 11px;transition:.12s}
+  button:hover{border-color:var(--accent)}
+  button.accent{background:var(--accent);border-color:var(--accent);color:#04222b;font-weight:700}
+  button.ghost{background:transparent}
+  button.danger{color:var(--red);border-color:#3a2226}
+  button:disabled{opacity:.45;cursor:default}
+  #searchBox{font-size:15px;padding:13px}
+  #status{font-size:12px;line-height:1.5;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 11px}
+  #status b{color:var(--accent)}
+  .swatch{display:inline-block;width:13px;height:13px;border-radius:3px;vertical-align:middle;margin-right:8px;border:1px solid rgba(255,255,255,.25)}
+  .legend{font-size:12px;color:var(--muted);line-height:1.9}
+  .tg{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);padding:3px 0;cursor:pointer}
+  .tg input{width:auto}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .badge.ok{background:rgba(63,179,119,.16);color:var(--green)}
+  .badge.no{background:rgba(229,72,77,.16);color:var(--red)}
+  .badge.maybe{background:rgba(240,163,56,.16);color:var(--amber)}
+  .badge.neutral{background:rgba(142,164,180,.16);color:var(--muted)}
+  #verdict{border:1px solid var(--line);border-radius:11px;padding:13px;background:var(--panel2)}
+  #verdict .dist{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;margin:8px 0 2px}
+  #verdict .meta{font-size:12px;color:var(--muted);line-height:1.5}
+  .mini{font-size:11px;color:var(--muted)}
+  .links{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .links a{flex:1;min-width:88px;text-align:center;text-decoration:none;font-size:11.5px;padding:7px 6px;border:1px solid var(--line);border-radius:7px;color:var(--accent);background:#10222a}
+  .item{display:flex;align-items:center;gap:9px;padding:8px 9px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:var(--panel2)}
+  .item .nm{flex:1;font-size:12.5px;min-width:0}
+  .item .nm small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .x{flex:none;width:26px;height:26px;padding:0;border:none;background:transparent;color:var(--muted);font-size:16px}
+  .empty{font-size:12px;color:var(--muted);font-style:italic;padding:4px 0}
+  details{border:1px solid var(--line);border-radius:9px;padding:0 12px;background:var(--panel2)}
+  summary{cursor:pointer;padding:11px 0;font-size:12px;font-weight:600;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";color:var(--accent)}
+  details[open] summary::before{content:"▾ "}
+  details .body{font-size:12px;color:var(--muted);line-height:1.6;padding:0 0 12px}
+  details .body b{color:var(--text)}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4}
+  #map{flex:1;height:100%}
+  .leaflet-container{background:#0a0f13}
+  .pin{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+  .pin span{transform:rotate(45deg);font-size:12px;font-weight:800;color:#fff}
+  .toolbar-m{display:none}
+  #modal{position:fixed;inset:0;background:rgba(4,8,11,.7);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+  #modal .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%;padding:18px}
+  #modal textarea{width:100%;height:200px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+  @media (max-width:760px){
+    #app{flex-direction:column}
+    #panel{width:100%;height:auto;max-height:60vh;border-right:none;border-bottom:1px solid var(--line)}
+    #map{height:40vh;min-height:260px}
+    .toolbar-m{display:flex;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+    .toolbar-m button{flex:1}
+    body.mapmax #panel{display:none}
+    body.mapmax #map{height:calc(100vh - 49px)}
+  }
+</style>
+</head>
+<body>
+<div class="toolbar-m"><button onclick="document.body.classList.toggle('mapmax')">Karte ⇄ Steuerung</button></div>
+<div id="app">
+  <div id="panel">
+    <div id="panelScroll">
+      <h1>Spielhallen-Standortfinder</h1>
+      <p class="sub">Stadt eingeben → bestehende Spielhallen + <b>grün markierte Gebiete</b>, wo eine Spielhalle planungsrechtlich am ehesten möglich ist. Region Donau-Ries ist vorgeladen.</p>
+
+      <div class="block">
+        <input type="text" id="searchBox" placeholder="Stadt eingeben, z. B. Nördlingen" autocomplete="off">
+        <div class="row" style="margin-top:8px">
+          <select id="land" onchange="applyLand()" style="flex:1.4">
+            <option value="250">Bayern · 250 m</option>
+            <option value="500">Baden-Württemberg · 500 m</option>
+            <option value="350">NRW · 350 m</option>
+            <option value="300">Hessen · 300 m</option>
+            <option value="100">Niedersachsen · 100 m</option>
+          </select>
+          <button class="accent" style="flex:1" onclick="goSearch()">Anzeigen</button>
+        </div>
+        <div class="hint" id="searchHint"></div>
+      </div>
+
+      <div class="block"><div id="status">Region Donau-Ries geladen.</div></div>
+
+      <div class="block">
+        <div class="lbl">Karte</div>
+        <label class="tg"><input type="checkbox" id="tgZone" checked onchange="renderZones()"><span class="swatch" style="background:rgba(63,179,119,.5)"></span>Mögliche Gebiete (Gewerbe/Zentrum)</label>
+        <label class="tg"><input type="checkbox" id="tgInd" onchange="renderZones()"><span class="swatch" style="background:rgba(240,163,56,.5)"></span>Industriegebiete (meist nicht)</label>
+        <label class="tg"><input type="checkbox" id="tgSat" onchange="setBase()">Luftbild statt Karte</label>
+      </div>
+
+      <div class="block">
+        <div class="lbl">Legende</div>
+        <div class="legend">
+          <span class="swatch" style="background:rgba(63,179,119,.5)"></span>grün = hier am ehesten möglich<br>
+          <span class="swatch" style="background:var(--red);border-radius:50%"></span>Spielhalle + Sperrkreis<br>
+          → wo <b style="color:var(--green)">grün</b> nicht von <b style="color:var(--red)">rot</b> überdeckt ist: Mietobjekt suchen
+        </div>
+      </div>
+
+      <div class="block">
+        <details>
+          <summary>Standort genau prüfen</summary>
+          <div class="body" style="padding-bottom:13px">
+            In die Karte tippen setzt einen Prüf-Pin. Er misst den Abstand zur nächsten Spielhalle; mit dem Baugebiet aus dem B-Plan kommt das rechtliche Urteil.
+            <div id="verdict" style="margin-top:10px">
+              <span id="vBadge" class="badge neutral">kein Standort</span>
+              <div class="dist" id="vDist">– m</div>
+              <div class="meta" id="vMeta">In die Karte tippen.</div>
+              <div style="margin-top:9px">
+                <select id="zone" onchange="onZone()">
+                  <option value="">Baugebiet lt. B-Plan wählen…</option>
+                  <option value="MK">Kerngebiet (MK)</option>
+                  <option value="MI">Mischgebiet (MI)</option>
+                  <option value="MU">Urbanes Gebiet (MU)</option>
+                  <option value="MD">Dorfgebiet (MD)</option>
+                  <option value="WB">Bes. Wohngebiet (WB)</option>
+                  <option value="GE">Gewerbegebiet (GE)</option>
+                  <option value="GI">Industriegebiet (GI)</option>
+                  <option value="WA">Allg. Wohngebiet (WA)</option>
+                  <option value="WR">Reines Wohngebiet (WR)</option>
+                  <option value="WS">Kleinsiedlung (WS)</option>
+                  <option value="SO">Sondergebiet (SO)</option>
+                  <option value="in34">Unbeplant §34</option>
+                  <option value="out35">Außenbereich §35</option>
+                </select>
+                <div class="mini" id="bauTxt" style="margin-top:6px"></div>
+              </div>
+              <div class="links" id="vLinks" style="display:none">
+                <a id="lkAtlas" target="_blank" rel="noopener">BayernAtlas</a>
+                <a id="lkLuft" target="_blank" rel="noopener">Luftbild</a>
+                <a id="lkDenk" target="_blank" rel="noopener">Denkmal</a>
+              </div>
+              <button class="accent" style="width:100%;margin-top:9px" onclick="saveCand()" id="saveBtn" disabled>Standort merken</button>
+            </div>
+            <div class="row" style="margin-top:9px">
+              <button class="ghost" style="flex:1" id="addHallBtn" onclick="armAdd('hall')">+ Spielhalle</button>
+              <button class="ghost" style="flex:1" id="addSensBtn" onclick="armAdd('sens')">+ Schule/Kita</button>
+            </div>
+            <div class="hint" id="armHint"></div>
+            <div class="row" style="margin-top:6px">
+              <div style="flex:1"><input type="number" id="nfFlae" value="120" min="0" step="10" onchange="refresh()"><div class="hint">Nutzfläche m² · <span id="kgtLbl"></span></div></div>
+              <div style="flex:1"><input type="number" id="schoolDist" value="0" min="0" step="10" onchange="refresh()"><div class="hint">m zu Schule (0=aus)</div></div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="block">
+        <details>
+          <summary>Listen & Export</summary>
+          <div class="body" style="padding-bottom:13px">
+            <div class="lbl" style="margin-top:4px">Spielhallen (<span id="cHall">0</span>)</div>
+            <div id="listHall"></div>
+            <div class="lbl">Gemerkte Standorte (<span id="cCand">0</span>)</div>
+            <div id="listCand"></div>
+            <div class="row" style="margin-top:8px">
+              <button class="ghost" style="flex:1" onclick="exportData()">Export</button>
+              <button class="danger" style="flex:1" onclick="clearAll()">Alles löschen</button>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="block">
+        <details>
+          <summary>Rechtliche Hinweise</summary>
+          <div class="body">
+            <b>Grüne Flächen</b> = Gewerbe-/Zentrumsflächen lt. OpenStreetMap, also wo eine Spielhalle (Vergnügungsstätte) am ehesten zulässig ist – <b>keine Garantie</b>. Der Bebauungsplan kann Vergnügungsstätten zusätzlich ausschließen (§1 Abs. 9 BauNVO) oder ein Vergnügungsstättenkonzept greifen.<br><br>
+            <b>BauNVO:</b> Kerngebiet zulässig · Gewerbegebiet nur ausnahmsweise · Misch-/Dorf-/bes. Wohngebiet nur wenn nicht kerngebietstypisch (≥100 m²) · Wohn-/Industriegebiet verboten.<br><br>
+            <b>Bayern:</b> 250 m zwischen Spielhallen, kein Schulabstand, keine Vergnügungssteuer. <b>BaWü:</b> 500 m + Abstand zu Kinder-/Jugendeinrichtungen. Bundesland oben passend wählen – die Sperrkreise nutzen diesen Wert. Werte ohne Gewähr.
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<div id="modal" onclick="if(event.target===this)this.style.display='none'">
+  <div class="box"><div class="lbl">Export</div><textarea id="exportArea" readonly></textarea>
+  <div class="row" style="margin-top:10px"><button class="accent" style="flex:1" onclick="copyExport()">Kopieren</button><button class="ghost" onclick="document.getElementById('modal').style.display='none'">Schließen</button></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+let halls=[], cands=[], sens=[], zones=[], active=null, activeZone='', pendingAdd=null, uid=1, lastCity='Donau-Ries';
+let activeMarker=null, activeLine=null;
+
+const CITIES={ 'nördlingen':[48.8516,10.4879],'noerdlingen':[48.8516,10.4879],'bopfingen':[48.8569,10.3556],'donauwörth':[48.7186,10.7779],'donauwoerth':[48.7186,10.7779],'aalen':[48.8378,10.0933],'dinkelsbühl':[49.0713,10.3187],'dinkelsbuehl':[49.0713,10.3187],'oettingen':[48.9519,10.6019],'wemding':[48.8744,10.7237],'heidenheim':[48.6781,10.1516],'neresheim':[48.7553,10.3306],'augsburg':[48.3705,10.8978],'münchen':[48.1374,11.5755],'muenchen':[48.1374,11.5755],'nürnberg':[49.4521,11.0767],'nuernberg':[49.4521,11.0767],'ulm':[48.3984,9.9916],'ingolstadt':[48.7665,11.4258],'gunzenhausen':[49.1156,10.7556] };
+
+// 13 echte Spielhallen im ~30-km-Umkreis (Stand: Recherche). Quelle: Google Places.
+function seedDemo(){
+  halls=[
+    {id:uid++,name:'Spielpalast Bopfingen (deine Halle)',lat:48.8485858,lng:10.3716704,source:'seed'},
+    {id:uid++,name:'Spielpark Bopfingen',lat:48.8591036,lng:10.3526207,source:'seed'},
+    {id:uid++,name:'Eastside (Nördlingen)',lat:48.8521204,lng:10.4967625,source:'seed'},
+    {id:uid++,name:'Big Cash Casino (Oettingen)',lat:48.9469775,lng:10.5971106,source:'seed'},
+    {id:uid++,name:'Spielothek Fortuna (Wemding)',lat:48.87494,lng:10.72369,source:'seed'},
+    {id:uid++,name:'Big Five (Donauwörth)',lat:48.7165429,lng:10.7675302,source:'seed'},
+    {id:uid++,name:'Admiral (Donauwörth)',lat:48.7176384,lng:10.7625508,source:'seed'},
+    {id:uid++,name:'Playtime (Donauwörth)',lat:48.72391,lng:10.77888,source:'seed'},
+    {id:uid++,name:'Impuls / Royal Play (Dinkelsbühl)',lat:49.0684606,lng:10.340715,source:'seed'},
+    {id:uid++,name:'Galaxy (Dinkelsbühl)',lat:49.06641,lng:10.32949,source:'seed'},
+    {id:uid++,name:'Merkur (Aalen)',lat:48.8347657,lng:10.087845,source:'seed'},
+    {id:uid++,name:'Löwen Play (Aalen)',lat:48.8395278,lng:10.0925479,source:'seed'},
+    {id:uid++,name:'Casino Dream.24 (Heidenheim)',lat:48.7148282,lng:10.1617268,source:'seed'}
+  ];
+  zones=[
+    {lu:'commercial',c:[48.8515,10.4975],r:270,seed:true}, // Nördlingen Zentrum/Bahnhof – deckt Eastside
+    {lu:'commercial',c:[48.8612,10.5127],r:190,seed:true}, // GG Industriestraße
+    {lu:'commercial',c:[48.8608,10.5016],r:180,seed:true}, // GG Oettinger/Nürnberger
+    {lu:'commercial',c:[48.8442,10.5020],r:190,seed:true}, // GG Augsburger
+    {lu:'retail',c:[48.8577,10.5023],r:150,seed:true},      // Reutheweg
+    {lu:'commercial',c:[48.8486,10.3717],r:230,seed:true}   // Bopfingen Industriestraße – deckt Spielpalast
+  ];
+}
+
+const map=L.map('map').setView([48.85,10.49],11);
+const baseOSM=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+const baseSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'&copy; Esri'});
+function setBase(){const sat=document.getElementById('tgSat').checked;map.removeLayer(baseOSM);map.removeLayer(baseSat);(sat?baseSat:baseOSM).addTo(map);}
+
+const gZones=L.layerGroup().addTo(map), gHalls=L.layerGroup().addTo(map), gSens=L.layerGroup().addTo(map), gCands=L.layerGroup().addTo(map);
+
+function dist(a,b){return map.distance(L.latLng(a.lat,a.lng),L.latLng(b.lat,b.lng));}
+function fmt(m){return m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';}
+function minDistTo(p,arr){let best=Infinity,who=null;arr.forEach(h=>{const d=dist(p,h);if(d<best){best=d;who=h;}});return{d:best,who};}
+function pinIcon(c,t){return L.divIcon({className:'',html:`<div class="pin" style="background:${c}"><span>${t}</span></div>`,iconSize:[26,26],iconAnchor:[13,26]});}
+function getMin(){return parseFloat(document.getElementById('land').value)||250;}
+function getSchool(){return parseFloat(document.getElementById('schoolDist').value)||0;}
+function isKGT(){return (parseFloat(document.getElementById('nfFlae').value)||0)>=100;}
+function setStatus(h){document.getElementById('status').innerHTML=h;}
+
+async function goSearch(){
+  const raw=document.getElementById('searchBox').value.trim();if(!raw)return;
+  const hint=document.getElementById('searchHint');hint.textContent='Suche Stadt…';
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=de&q=${encodeURIComponent(raw)}`);
+    const j=await r.json();
+    if(j&&j.length){lastCity=j[0].display_name.split(',')[0];map.setView([+j[0].lat,+j[0].lon],14);hint.textContent='';setTimeout(analyze,250);return;}
+  }catch(e){}
+  const key=raw.toLowerCase().replace(/[^a-zäöü]/g,'');
+  if(CITIES[key]){lastCity=raw;map.setView(CITIES[key],14);hint.textContent='';setTimeout(analyze,250);return;}
+  hint.textContent='Stadt nicht gefunden (oder Online-Suche im Vorschaufenster blockiert). Lokal/auf Vercel klappt jede Stadt.';
+}
+document.getElementById('searchBox').addEventListener('keydown',e=>{if(e.key==='Enter')goSearch();});
+
+async function overpass(q){
+  const eps=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+  for(const ep of eps){try{const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q)});if(r.ok)return await r.json();}catch(e){}}
+  throw new Error('overpass');
+}
+
+async function analyze(){
+  if(map.getZoom()<11)map.setZoom(12);
+  setStatus('Lädt Spielhallen & Gebiete für <b>'+lastCity+'</b> …');
+  const b=map.getBounds();const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb}););out center tags;way["landuse"~"^(commercial|retail|industrial)$"](${bb});out geom tags;`;
+  try{
+    const j=await overpass(q);
+    const base=halls.filter(h=>h.source==='seed'||h.source==='manual'); // kuratierte bleiben, OSM ergänzt
+    const newZones=[];
+    (j.elements||[]).forEach(el=>{
+      if(el.tags&&el.tags.landuse&&el.geometry){newZones.push({lu:el.tags.landuse,pts:el.geometry.map(g=>[g.lat,g.lon])});}
+      else if(el.tags&&(el.tags.leisure||el.tags.shop||el.tags.amenity)){
+        const lat=el.lat||(el.center&&el.center.lat),lng=el.lon||(el.center&&el.center.lon);if(lat==null)return;
+        if(base.some(h=>Math.abs(h.lat-lat)<2e-4&&Math.abs(h.lng-lng)<2e-4))return;
+        base.push({id:uid++,name:(el.tags.name||el.tags.brand||'Spielhalle (OSM)'),lat,lng,source:'osm'});
+      }
+    });
+    halls=base;
+    if(newZones.length)zones=newZones;
+    const nGreen=zones.filter(z=>z.lu!=='industrial').length;
+    setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete grün markiert.`);
+    refresh();
+  }catch(e){
+    refresh();
+    setStatus('⚠ Live-Daten werden hier im Vorschaufenster blockiert. <b>Lokal öffnen / auf Vercel hosten</b>, dann lädt jede Stadt automatisch. Vorgeladene Region + Prüfung funktionieren hier trotzdem.');
+  }
+}
+
+function bauVerdict(zone,kgt){switch(zone){
+  case 'MK':return {s:'ok',t:'Kerngebiet – allgemein zulässig'};
+  case 'GE':return {s:'maybe',t:'Gewerbegebiet – nur ausnahmsweise (§8 III Nr.3)'};
+  case 'MI':return kgt?{s:'no',t:'Mischgebiet – kerngebietstypisch → unzulässig'}:{s:'maybe',t:'Mischgebiet – nur gewerbl. Teile / sonst ausnahmsweise'};
+  case 'MU':return kgt?{s:'no',t:'Urbanes Gebiet – kerngebietstypisch i.d.R. unzulässig'}:{s:'maybe',t:'Urbanes Gebiet – ausnahmsweise'};
+  case 'MD':return kgt?{s:'no',t:'Dorfgebiet – kerngebietstypisch → unzulässig'}:{s:'maybe',t:'Dorfgebiet – ausnahmsweise'};
+  case 'WB':return kgt?{s:'no',t:'Bes. Wohngebiet – kerngebietstypisch → unzulässig'}:{s:'maybe',t:'Bes. Wohngebiet – ausnahmsweise'};
+  case 'GI':return {s:'no',t:'Industriegebiet – i.d.R. unzulässig'};
+  case 'WA':return {s:'no',t:'Allg. Wohngebiet – unzulässig'};
+  case 'WR':return {s:'no',t:'Reines Wohngebiet – unzulässig'};
+  case 'WS':return {s:'no',t:'Kleinsiedlungsgebiet – unzulässig'};
+  case 'SO':return {s:'check',t:'Sondergebiet – Zweckbestimmung prüfen'};
+  case 'in34':return {s:'check',t:'§34 – faktisches Gebiet entscheidet'};
+  case 'out35':return {s:'no',t:'Außenbereich – i.d.R. unzulässig'};
+  default:return {s:'unset',t:''};}}
+
+function armAdd(t){pendingAdd=t;document.getElementById('armHint').textContent=t==='hall'?'Jetzt in die Karte tippen, um eine Spielhalle zu setzen.':'Jetzt in die Karte tippen, um eine Schule/Kita zu setzen.';}
+map.on('click',e=>{const p={lat:e.latlng.lat,lng:e.latlng.lng};
+  if(pendingAdd==='hall'){halls.push({id:uid++,name:'Spielhalle '+(halls.length+1),lat:p.lat,lng:p.lng,source:'manual'});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
+  else if(pendingAdd==='sens'){sens.push({id:uid++,name:'Schule/Kita '+(sens.length+1),lat:p.lat,lng:p.lng});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
+  else setActive(p);
+});
+
+function setActive(p){active=p;
+  if(activeMarker)activeMarker.setLatLng([p.lat,p.lng]);
+  else{activeMarker=L.marker([p.lat,p.lng],{icon:pinIcon('var(--green)','?'),draggable:true,zIndexOffset:1000}).addTo(map);
+    activeMarker.on('drag',ev=>{active={lat:ev.latlng.lat,lng:ev.latlng.lng};updateActive();});activeMarker.on('dragend',updateActive);}
+  updateActive();
+}
+function onZone(){activeZone=document.getElementById('zone').value;updateActive();}
+
+function overall(p){const minN=getMin(),schN=getSchool();let ab=null,d=null,near=null;
+  if(halls.length){const r=minDistTo(p,halls);d=r.d;near=r.who;ab=d>=minN;}
+  let schoolBad=false;if(schN>0&&sens.length){const s=minDistTo(p,sens);if(s.d<schN)schoolBad=true;}
+  const bv=bauVerdict(activeZone,isKGT());let s;
+  if(ab===false||schoolBad||bv.s==='no')s='no';
+  else if(bv.s==='unset')s=(ab===null?'neutral':(ab?'partial':'no'));
+  else if(bv.s==='ok'&&ab===true)s='ok';else if(ab===null)s='partial';else s='maybe';
+  return {s,ab,d,near,bv,schoolBad,minN};}
+
+function updateActive(){
+  const badge=document.getElementById('vBadge'),vd=document.getElementById('vDist'),vm=document.getElementById('vMeta'),sb=document.getElementById('saveBtn'),bt=document.getElementById('bauTxt'),lk=document.getElementById('vLinks');
+  document.getElementById('kgtLbl').textContent=isKGT()?'kerngebietstypisch':'nicht kgt';
+  if(activeLine){map.removeLayer(activeLine);activeLine=null;}
+  if(!active){badge.className='badge neutral';badge.textContent='kein Standort';vd.textContent='– m';vm.textContent='In die Karte tippen.';sb.disabled=true;lk.style.display='none';bt.textContent='';return;}
+  sb.disabled=false;lk.style.display='flex';
+  const o=overall(active);
+  if(o.ab!==null){vd.textContent=fmt(o.d);activeLine=L.polyline([[active.lat,active.lng],[o.near.lat,o.near.lng]],{color:o.ab?'#3fb377':'#e5484d',weight:2,dashArray:'5,6'}).addTo(map);}else vd.textContent='– m';
+  let meta=o.ab===null?'Keine Spielhalle als Referenz.':`Nächste Spielhalle: <b style="color:var(--text)">${o.near.name}</b> · Soll ≥ ${o.minN} m`;
+  if(o.schoolBad)meta+=' · ⚠ Schulabstand unterschritten';vm.innerHTML=meta;
+  bt.innerHTML=o.bv.s==='unset'?'Baugebiet wählen (BayernAtlas/B-Plan unten).':`<b style="color:var(--text)">Baurecht:</b> ${o.bv.t}`;
+  const m3={ok:['ok','✓ zulässig'],maybe:['maybe','◐ nur ausnahmsweise / Einzelfall'],no:['no','✗ nicht zulässig'],partial:['neutral','Baugebiet wählen'],neutral:['neutral','Referenz fehlt']};
+  const mb=m3[o.s];badge.className='badge '+mb[0];badge.textContent=mb[1];
+  if(activeMarker)activeMarker.setIcon(pinIcon(o.s==='no'?'var(--red)':o.s==='ok'?'var(--green)':o.s==='maybe'?'var(--amber)':'#8ea4b4','?'));
+  const la=active.lat.toFixed(6),lo=active.lng.toFixed(6);
+  document.getElementById('lkAtlas').href=`https://atlas.bayern.de/?lon=${lo}&lat=${la}&zoom=16&crosshair=marker`;
+  document.getElementById('lkLuft').href=`https://www.google.com/maps?q=${la},${lo}&t=k`;
+  document.getElementById('lkDenk').href=`https://geoportal.bayern.de/denkmalatlas/?lon=${lo}&lat=${la}`;
+}
+function saveCand(){if(!active)return;const name=prompt('Name für diesen Standort:','Standort '+(cands.length+1));if(name===null)return;
+  cands.push({id:uid++,name:name||('Standort '+(cands.length+1)),lat:active.lat,lng:active.lng,zone:activeZone});
+  if(activeMarker){map.removeLayer(activeMarker);activeMarker=null;}if(activeLine){map.removeLayer(activeLine);activeLine=null;}active=null;updateActive();refresh();}
+
+function candStatus(c){const minN=getMin(),schN=getSchool();let ab=null,d=null;
+  if(halls.length){const r=minDistTo(c,halls);ab=r.d>=minN;d=r.d;}
+  let schoolBad=false;if(schN>0&&sens.length){const s=minDistTo(c,sens);if(s.d<schN)schoolBad=true;}
+  const bv=bauVerdict(c.zone||'',isKGT());let s;
+  if(ab===false||schoolBad||bv.s==='no')s='no';else if(bv.s==='unset')s=(ab===null?'neutral':(ab?'partial':'no'));
+  else if(bv.s==='ok'&&ab===true)s='ok';else if(ab===null)s='partial';else s='maybe';
+  return {s,d,bv};}
+
+function renderZones(){
+  gZones.clearLayers();
+  const showG=document.getElementById('tgZone').checked, showI=document.getElementById('tgInd').checked;
+  zones.forEach(z=>{
+    const ind=z.lu==='industrial';
+    if(ind&&!showI)return; if(!ind&&!showG)return;
+    const col=ind?'#f0a338':'#3fb377', op=ind?.15:.20;
+    let layer;
+    if(z.pts)layer=L.polygon(z.pts,{color:col,weight:1,fillColor:col,fillOpacity:op,interactive:false});
+    else layer=L.circle(z.c,{radius:z.r,color:col,weight:1,fillColor:col,fillOpacity:op,interactive:false});
+    layer.addTo(gZones);
+  });
+}
+function refresh(){
+  renderZones();
+  gHalls.clearLayers();gSens.clearLayers();gCands.clearLayers();
+  const minN=getMin(),schN=getSchool();
+  halls.forEach(h=>{
+    L.circle([h.lat,h.lng],{radius:minN,color:'#e5484d',weight:1,fillColor:'#e5484d',fillOpacity:.12,interactive:false}).addTo(gHalls);
+    L.circleMarker([h.lat,h.lng],{radius:7,color:'#fff',weight:2,fillColor:'#e5484d',fillOpacity:1}).addTo(gHalls).bindTooltip(h.name,{direction:'top'});
+  });
+  sens.forEach(s=>{if(schN>0)L.circle([s.lat,s.lng],{radius:schN,color:'#f0a338',weight:1,fillColor:'#f0a338',fillOpacity:.07,dashArray:'4,5',interactive:false}).addTo(gSens);
+    L.circleMarker([s.lat,s.lng],{radius:6,color:'#fff',weight:2,fillColor:'#f0a338',fillOpacity:1}).addTo(gSens).bindTooltip(s.name,{direction:'top'});});
+  cands.forEach(c=>{const st=candStatus(c);const col=st.s==='no'?'#e5484d':st.s==='ok'?'#3fb377':st.s==='maybe'?'#f0a338':'#8ea4b4';
+    let tip=c.name;if(st.d!=null)tip+=' · '+fmt(st.d);if(c.zone)tip+=' · '+c.zone;
+    L.circleMarker([c.lat,c.lng],{radius:8,color:'#fff',weight:2,fillColor:col,fillOpacity:1}).addTo(gCands).bindTooltip(tip,{direction:'top'});});
+  updateActive();renderLists();
+}
+function renderLists(){
+  document.getElementById('cHall').textContent=halls.length;document.getElementById('cCand').textContent=cands.length;
+  const lh=document.getElementById('listHall');lh.innerHTML=halls.length?'':'<div class="empty">Noch keine geladen.</div>';
+  halls.forEach(h=>lh.appendChild(itemEl(h,(h.source==='osm'?'OSM · ':'')+`${h.lat.toFixed(5)}, ${h.lng.toFixed(5)}`,()=>{halls=halls.filter(x=>x.id!==h.id);refresh();})));
+  const lc=document.getElementById('listCand');lc.innerHTML=cands.length?'':'<div class="empty">Noch keine gemerkt.</div>';
+  cands.forEach(c=>{const st=candStatus(c);const lab={ok:'OK',maybe:'Ausn.',no:'✗',partial:'?',neutral:'?'}[st.s];const bc={ok:'ok',maybe:'maybe',no:'no',partial:'neutral',neutral:'neutral'}[st.s];
+    lc.appendChild(itemEl(c,(st.d!=null?fmt(st.d):'—')+(c.zone?' · '+c.zone:' · Baugebiet?'),()=>{cands=cands.filter(x=>x.id!==c.id);refresh();},bc,lab));});
+}
+function itemEl(o,sub,onDel,bc,bt){const d=document.createElement('div');d.className='item';d.innerHTML=`<div class="nm">${o.name}<small>${sub}</small></div>`;
+  if(bt){const b=document.createElement('span');b.className='badge '+bc;b.style.flex='none';b.textContent=bt;d.appendChild(b);}
+  const x=document.createElement('button');x.className='x';x.textContent='×';x.onclick=onDel;d.appendChild(x);
+  const nm=d.querySelector('.nm');nm.style.cursor='pointer';nm.onclick=()=>map.setView([o.lat,o.lng],16);return d;}
+
+function applyLand(){refresh();}
+function exportData(){const fc={type:'FeatureCollection',meta:{stadt:lastCity,mindestabstand_m:getMin()},features:[]};
+  halls.forEach(h=>fc.features.push({type:'Feature',properties:{kategorie:'spielhalle',name:h.name,quelle:h.source},geometry:{type:'Point',coordinates:[h.lng,h.lat]}}));
+  cands.forEach(c=>{const st=candStatus(c);fc.features.push({type:'Feature',properties:{kategorie:'standort',name:c.name,baugebiet:c.zone||'',abstand_m:st.d!=null?Math.round(st.d):null,bewertung:st.s},geometry:{type:'Point',coordinates:[c.lng,c.lat]}});});
+  document.getElementById('exportArea').value=JSON.stringify(fc,null,2);document.getElementById('modal').style.display='flex';}
+function copyExport(){const t=document.getElementById('exportArea');t.select();try{navigator.clipboard.writeText(t.value);}catch(e){document.execCommand('copy');}}
+function clearAll(){if(!confirm('Alle Punkte & Gebiete löschen?'))return;halls=[];cands=[];sens=[];zones=[];active=null;if(activeMarker){map.removeLayer(activeMarker);activeMarker=null;}if(activeLine){map.removeLayer(activeLine);activeLine=null;}refresh();setStatus('Stadt eingeben und „Anzeigen" tippen.');}
+
+// Start: Region sofort zeigen, dann (falls möglich) live ergänzen
+seedDemo();
+refresh();
+const ll=halls.map(h=>[h.lat,h.lng]);
+if(ll.length)map.fitBounds(L.latLngBounds(ll).pad(0.12));
+analyze();
+</script>
+</body>
+</html>
