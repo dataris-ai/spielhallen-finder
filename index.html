@@ -210,7 +210,7 @@ let activeMarker=null, activeLine=null;
 
 const CITIES={ 'nördlingen':[48.8516,10.4879],'noerdlingen':[48.8516,10.4879],'bopfingen':[48.8569,10.3556],'donauwörth':[48.7186,10.7779],'donauwoerth':[48.7186,10.7779],'aalen':[48.8378,10.0933],'dinkelsbühl':[49.0713,10.3187],'dinkelsbuehl':[49.0713,10.3187],'oettingen':[48.9519,10.6019],'wemding':[48.8744,10.7237],'heidenheim':[48.6781,10.1516],'neresheim':[48.7553,10.3306],'augsburg':[48.3705,10.8978],'münchen':[48.1374,11.5755],'muenchen':[48.1374,11.5755],'nürnberg':[49.4521,11.0767],'nuernberg':[49.4521,11.0767],'ulm':[48.3984,9.9916],'ingolstadt':[48.7665,11.4258],'gunzenhausen':[49.1156,10.7556] };
 
-// 13 echte Spielhallen im ~30-km-Umkreis (Stand: Recherche). Quelle: Google Places.
+// 25 echte Spielhallen im weiteren Umkreis (Donau-Ries, Ostalb, Heidenheim, Dillingen, Weißenburg). Quelle: OSM/Google Places.
 function seedDemo(){
   halls=[
     {id:uid++,name:'Spielpalast Bopfingen (deine Halle)',lat:48.8485858,lng:10.3716704,source:'seed'},
@@ -225,18 +225,21 @@ function seedDemo(){
     {id:uid++,name:'Galaxy (Dinkelsbühl)',lat:49.06641,lng:10.32949,source:'seed'},
     {id:uid++,name:'Merkur (Aalen)',lat:48.8347657,lng:10.087845,source:'seed'},
     {id:uid++,name:'Löwen Play (Aalen)',lat:48.8395278,lng:10.0925479,source:'seed'},
-    {id:uid++,name:'Casino Dream.24 (Heidenheim)',lat:48.7148282,lng:10.1617268,source:'seed'}
+    {id:uid++,name:'Casino Dream.24 (Heidenheim)',lat:48.7148282,lng:10.1617268,source:'seed'},
+    {id:uid++,name:'Cash Town (Aalen)',lat:48.8400599,lng:10.0937468,source:'seed'},
+    {id:uid++,name:'Casino Zentaurus (Aalen)',lat:48.8373494,lng:10.0915389,source:'seed'},
+    {id:uid++,name:'City Spielhalle (Aalen)',lat:48.8382039,lng:10.0933074,source:'seed'},
+    {id:uid++,name:'Gutenberg Kasino (Aalen)',lat:48.8442404,lng:10.0930115,source:'seed'},
+    {id:uid++,name:'Jackpot Casino (Aalen)',lat:48.8393573,lng:10.0962270,source:'seed'},
+    {id:uid++,name:'Fun City Casino (Gerstetten)',lat:48.6274769,lng:10.0088236,source:'seed'},
+    {id:uid++,name:'Löwen Play (Heidenheim)',lat:48.6795564,lng:10.1094084,source:'seed'},
+    {id:uid++,name:'Merkur Spielothek (Herbrechtingen)',lat:48.6120737,lng:10.2025887,source:'seed'},
+    {id:uid++,name:'Planet (Weißenburg)',lat:49.0304721,lng:10.9665293,source:'seed'},
+    {id:uid++,name:'Playtime (Lauingen)',lat:48.5757830,lng:10.4484493,source:'seed'},
+    {id:uid++,name:'Tip Top Spielhalle (Lauingen)',lat:48.5721749,lng:10.4267684,source:'seed'},
+    {id:uid++,name:'Vegas World (Bäumenheim)',lat:48.6736906,lng:10.8248511,source:'seed'}
   ];
-  zones=[
-    {lu:'commercial',c:[48.8515,10.4975],r:270,seed:true}, // Nördlingen Zentrum/Bahnhof – deckt Eastside
-    {lu:'commercial',c:[48.8612,10.5127],r:190,seed:true}, // GG Industriestraße
-    {lu:'commercial',c:[48.8608,10.5016],r:180,seed:true}, // GG Oettinger/Nürnberger
-    {lu:'commercial',c:[48.8442,10.5020],r:190,seed:true}, // GG Augsburger
-    {lu:'retail',c:[48.8577,10.5023],r:150,seed:true},      // Reutheweg
-    {lu:'commercial',c:[48.8486,10.3717],r:230,seed:true},  // Bopfingen Industriestraße – deckt Spielpalast
-    {lu:'residential',c:[48.8505,10.4790],r:320,seed:true}, // Wohngebiet Nördlingen West (Demo)
-    {lu:'residential',c:[48.8455,10.4905],r:300,seed:true}  // Wohngebiet Nördlingen Süd (Demo)
-  ];
+  zones=[]; // Gebiete kommen live aus OSM: commercial/retail=grün, residential=rot, industrial=gelb
 }
 
 const map=L.map('map').setView([48.85,10.49],11);
@@ -276,7 +279,7 @@ async function overpass(q){
 }
 
 async function analyze(){
-  if(map.getZoom()<11)map.setZoom(12);
+  if(map.getZoom()<10)map.setZoom(10);
   setStatus('Lädt Spielhallen & Gebiete für <b>'+lastCity+'</b> …');
   const b=map.getBounds();const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
   const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb}););out center tags;way["landuse"~"^(commercial|retail|industrial|residential)$"](${bb});out geom tags;`;
@@ -402,7 +405,7 @@ function refresh(){
   cands.forEach(c=>{const st=candStatus(c);const col=st.s==='no'?'#e5484d':st.s==='ok'?'#3fb377':st.s==='maybe'?'#f0a338':'#8ea4b4';
     let tip=c.name;if(st.d!=null)tip+=' · '+fmt(st.d);if(c.zone)tip+=' · '+c.zone;
     L.circleMarker([c.lat,c.lng],{radius:8,color:'#fff',weight:2,fillColor:col,fillOpacity:1}).addTo(gCands).bindTooltip(tip,{direction:'top'});});
-  updateActive();renderLists();
+  updateActive();renderLists();saveState();
 }
 function renderLists(){
   document.getElementById('cHall').textContent=halls.length;document.getElementById('cCand').textContent=cands.length;
@@ -425,11 +428,29 @@ function exportData(){const fc={type:'FeatureCollection',meta:{stadt:lastCity,mi
 function copyExport(){const t=document.getElementById('exportArea');t.select();try{navigator.clipboard.writeText(t.value);}catch(e){document.execCommand('copy');}}
 function clearAll(){if(!confirm('Alle Punkte & Gebiete löschen?'))return;halls=[];cands=[];sens=[];zones=[];active=null;if(activeMarker){map.removeLayer(activeMarker);activeMarker=null;}if(activeLine){map.removeLayer(activeLine);activeLine=null;}refresh();setStatus('Stadt eingeben und „Anzeigen" tippen.');}
 
+// Eigene Eingaben (gemerkte Standorte, selbst gesetzte Hallen/Schulen, Einstellungen) lokal speichern
+const LS_KEY='shf_v1';
+function saveState(){try{localStorage.setItem(LS_KEY,JSON.stringify({
+  cands,sens,
+  manual:halls.filter(h=>h.source==='manual'),
+  land:document.getElementById('land').value,
+  nf:document.getElementById('nfFlae').value,
+  sd:document.getElementById('schoolDist').value
+}));}catch(e){}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));if(!s)return;
+  if(Array.isArray(s.cands))cands=s.cands.map(c=>({...c,id:uid++}));
+  if(Array.isArray(s.sens))sens=s.sens.map(x=>({...x,id:uid++}));
+  if(Array.isArray(s.manual))s.manual.forEach(h=>halls.push({...h,id:uid++,source:'manual'}));
+  if(s.land)document.getElementById('land').value=s.land;
+  if(s.nf)document.getElementById('nfFlae').value=s.nf;
+  if(s.sd)document.getElementById('schoolDist').value=s.sd;
+}catch(e){}}
+
 // Start: Region sofort zeigen, dann (falls möglich) live ergänzen
 seedDemo();
+loadState();
 refresh();
-const ll=halls.map(h=>[h.lat,h.lng]);
-if(ll.length)map.fitBounds(L.latLngBounds(ll).pad(0.12));
+map.setView([48.8516,10.4879],11); // Start auf Nördlingen (Zielstadt); weitere Hallen via Zoom/Suche
 analyze();
 </script>
 </body>
