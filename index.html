@@ -103,15 +103,17 @@
 
       <div class="block">
         <div class="lbl">Karte</div>
-        <label class="tg"><input type="checkbox" id="tgZone" checked onchange="renderZones()"><span class="swatch" style="background:rgba(63,179,119,.5)"></span>Mögliche Gebiete (Gewerbe/Zentrum)</label>
+        <label class="tg"><input type="checkbox" id="tgZone" checked onchange="renderZones()"><span class="swatch" style="background:#34e08a"></span>Mögliche Gebiete (Gewerbe/Zentrum)</label>
         <label class="tg"><input type="checkbox" id="tgInd" onchange="renderZones()"><span class="swatch" style="background:rgba(240,163,56,.5)"></span>Industriegebiete (meist nicht)</label>
+        <label class="tg"><input type="checkbox" id="tgRes" onchange="renderZones()"><span class="swatch" style="background:rgba(229,72,77,.5)"></span>Wohngebiete (baurechtlich ausgeschlossen)</label>
         <label class="tg"><input type="checkbox" id="tgSat" onchange="setBase()">Luftbild statt Karte</label>
       </div>
 
       <div class="block">
         <div class="lbl">Legende</div>
         <div class="legend">
-          <span class="swatch" style="background:rgba(63,179,119,.5)"></span>grün = hier am ehesten möglich<br>
+          <span class="swatch" style="background:#34e08a"></span>grün = hier am ehesten möglich<br>
+          <span class="swatch" style="background:rgba(229,72,77,.5)"></span>rote Fläche = Wohngebiet, ausgeschlossen<br>
           <span class="swatch" style="background:var(--red);border-radius:50%"></span>Spielhalle + Sperrkreis<br>
           → wo <b style="color:var(--green)">grün</b> nicht von <b style="color:var(--red)">rot</b> überdeckt ist: Mietobjekt suchen
         </div>
@@ -231,7 +233,9 @@ function seedDemo(){
     {lu:'commercial',c:[48.8608,10.5016],r:180,seed:true}, // GG Oettinger/Nürnberger
     {lu:'commercial',c:[48.8442,10.5020],r:190,seed:true}, // GG Augsburger
     {lu:'retail',c:[48.8577,10.5023],r:150,seed:true},      // Reutheweg
-    {lu:'commercial',c:[48.8486,10.3717],r:230,seed:true}   // Bopfingen Industriestraße – deckt Spielpalast
+    {lu:'commercial',c:[48.8486,10.3717],r:230,seed:true},  // Bopfingen Industriestraße – deckt Spielpalast
+    {lu:'residential',c:[48.8505,10.4790],r:320,seed:true}, // Wohngebiet Nördlingen West (Demo)
+    {lu:'residential',c:[48.8455,10.4905],r:300,seed:true}  // Wohngebiet Nördlingen Süd (Demo)
   ];
 }
 
@@ -275,7 +279,7 @@ async function analyze(){
   if(map.getZoom()<11)map.setZoom(12);
   setStatus('Lädt Spielhallen & Gebiete für <b>'+lastCity+'</b> …');
   const b=map.getBounds();const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb}););out center tags;way["landuse"~"^(commercial|retail|industrial)$"](${bb});out geom tags;`;
+  const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb}););out center tags;way["landuse"~"^(commercial|retail|industrial|residential)$"](${bb});out geom tags;`;
   try{
     const j=await overpass(q);
     const base=halls.filter(h=>h.source==='seed'||h.source==='manual'); // kuratierte bleiben, OSM ergänzt
@@ -284,13 +288,13 @@ async function analyze(){
       if(el.tags&&el.tags.landuse&&el.geometry){newZones.push({lu:el.tags.landuse,pts:el.geometry.map(g=>[g.lat,g.lon])});}
       else if(el.tags&&(el.tags.leisure||el.tags.shop||el.tags.amenity)){
         const lat=el.lat||(el.center&&el.center.lat),lng=el.lon||(el.center&&el.center.lon);if(lat==null)return;
-        if(base.some(h=>Math.abs(h.lat-lat)<2e-4&&Math.abs(h.lng-lng)<2e-4))return;
+        if(base.some(h=>map.distance(L.latLng(h.lat,h.lng),L.latLng(lat,lng))<80))return;
         base.push({id:uid++,name:(el.tags.name||el.tags.brand||'Spielhalle (OSM)'),lat,lng,source:'osm'});
       }
     });
     halls=base;
     if(newZones.length)zones=newZones;
-    const nGreen=zones.filter(z=>z.lu!=='industrial').length;
+    const nGreen=zones.filter(z=>z.lu!=='industrial'&&z.lu!=='residential').length;
     setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete grün markiert.`);
     refresh();
   }catch(e){
@@ -372,14 +376,16 @@ function candStatus(c){const minN=getMin(),schN=getSchool();let ab=null,d=null;
 
 function renderZones(){
   gZones.clearLayers();
-  const showG=document.getElementById('tgZone').checked, showI=document.getElementById('tgInd').checked;
+  const showG=document.getElementById('tgZone').checked, showI=document.getElementById('tgInd').checked, showR=document.getElementById('tgRes').checked;
   zones.forEach(z=>{
-    const ind=z.lu==='industrial';
-    if(ind&&!showI)return; if(!ind&&!showG)return;
-    const col=ind?'#f0a338':'#3fb377', op=ind?.15:.20;
+    const cat=z.lu==='industrial'?'ind':z.lu==='residential'?'res':'green';
+    if(cat==='green'&&!showG)return; if(cat==='ind'&&!showI)return; if(cat==='res'&&!showR)return;
+    const st=cat==='green'?{color:'#168b56',fillColor:'#34e08a',fillOpacity:.33,weight:2}
+            :cat==='ind'?{color:'#f0a338',fillColor:'#f0a338',fillOpacity:.15,weight:1}
+            :{color:'#e5484d',fillColor:'#e5484d',fillOpacity:.22,weight:1};
     let layer;
-    if(z.pts)layer=L.polygon(z.pts,{color:col,weight:1,fillColor:col,fillOpacity:op,interactive:false});
-    else layer=L.circle(z.c,{radius:z.r,color:col,weight:1,fillColor:col,fillOpacity:op,interactive:false});
+    if(z.pts)layer=L.polygon(z.pts,{...st,interactive:false});
+    else layer=L.circle(z.c,{radius:z.r,...st,interactive:false});
     layer.addTo(gZones);
   });
 }
