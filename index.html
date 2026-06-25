@@ -104,11 +104,11 @@
 
       <div class="block">
         <div class="lbl">Karte</div>
-        <label class="tg"><input type="checkbox" id="tgZone" checked onchange="renderZones()"><span class="swatch" style="background:#34e08a"></span>Mögliche Gebiete (Gewerbe/Zentrum)</label>
+        <label class="tg"><input type="checkbox" id="tgZone" onchange="renderZones()"><span class="swatch" style="background:#34e08a"></span>Mögliche Gebiete (Gewerbe/Zentrum)</label>
         <label class="tg"><input type="checkbox" id="tgInd" onchange="renderZones()"><span class="swatch" style="background:rgba(240,163,56,.5)"></span>Industriegebiete (meist nicht)</label>
         <label class="tg"><input type="checkbox" id="tgRes" onchange="renderZones()"><span class="swatch" style="background:rgba(229,72,77,.5)"></span>Wohngebiete (baurechtlich ausgeschlossen)</label>
-        <label class="tg"><input type="checkbox" id="tgPot" checked onchange="renderZones()"><span class="swatch" style="background:rgba(55,182,214,.5)"></span>Potenzialflächen (Brache/Bau – prüfen)</label>
-        <label class="tg"><input type="checkbox" id="tgSch" onchange="toggleSchools()"><span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schulen/Kitas laden (Jugendschutz)</label>
+        <label class="tg"><input type="checkbox" id="tgPot" onchange="renderZones()"><span class="swatch" style="background:rgba(55,182,214,.5)"></span>Potenzialflächen (Brache/Bau – prüfen)</label>
+        <label class="tg"><input type="checkbox" id="tgSch" onchange="toggleSchools()"><span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schulen laden (Jugendschutz BaWü)</label>
         <label class="tg"><input type="checkbox" id="tgSat" onchange="setBase()">Luftbild statt Karte</label>
       </div>
 
@@ -119,7 +119,7 @@
           <span class="swatch" style="background:rgba(55,182,214,.5)"></span>Potenzialfläche (Brache/Bau) – Baurecht prüfen<br>
           <span class="swatch" style="background:rgba(229,72,77,.5)"></span>rote Fläche = Wohngebiet, ausgeschlossen<br>
           <span class="swatch" style="background:var(--red);border-radius:50%"></span>Spielhalle + Sperrkreis<br>
-          <span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schule/Kita (BaWü: 500 m Abstand)<br>
+          <span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schule (BaWü 500 m; Kitas/Grundschulen zählen nicht)<br>
           → wo <b style="color:var(--green)">grün</b> nicht von <b style="color:var(--red)">rot</b> überdeckt ist: Mietobjekt suchen
         </div>
       </div>
@@ -177,7 +177,7 @@
             </div>
             <div class="row" style="margin-top:9px">
               <button class="ghost" style="flex:1" id="addHallBtn" onclick="armAdd('hall')">+ Spielhalle</button>
-              <button class="ghost" style="flex:1" id="addSensBtn" onclick="armAdd('sens')">+ Schule/Kita</button>
+              <button class="ghost" style="flex:1" id="addSensBtn" onclick="armAdd('sens')">+ Schule</button>
             </div>
             <div class="hint" id="armHint"></div>
             <div class="row" style="margin-top:6px">
@@ -211,7 +211,7 @@
             <b>Grüne Flächen</b> = Gewerbe-/Zentrumsflächen lt. OpenStreetMap, also wo eine Spielhalle (Vergnügungsstätte) am ehesten zulässig ist – <b>keine Garantie</b>. Der Bebauungsplan kann Vergnügungsstätten zusätzlich ausschließen (§1 Abs. 9 BauNVO) oder ein Vergnügungsstättenkonzept greifen.<br><br>
             <b>BauNVO:</b> Kerngebiet zulässig · Gewerbegebiet nur ausnahmsweise · Misch-/Dorf-/bes. Wohngebiet nur wenn nicht kerngebietstypisch (≥100 m²) · Wohn-/Industriegebiet verboten.<br><br>
             <b>Bayern (Art. 10 III BayAGGlüStV):</b> <b>500 m</b> zwischen Spielhallen bei Neuerlaubnis (250 m nur für Bestand mit vollständigem Antrag bis 30.06.2017); <b>kein</b> gesetzlicher Schulabstand; <b>keine</b> Vergnügungssteuer (Bayern erhebt sie landesweit nicht).<br><br>
-            <b>Baden-Württemberg (§42 LGlüG):</b> 500 m zwischen Spielhallen <b>und</b> 500 m zu Einrichtungen für Minderjährige (Schulen/Kitas). Bundesland oben passend wählen – die Sperrkreise nutzen diesen Wert. Alle Werte ohne Gewähr, maßgeblich ist die Behörde.
+            <b>Baden-Württemberg (§42 LGlüG):</b> 500 m zwischen Spielhallen <b>und</b> 500 m (Luftlinie, Tür zu Tür) zu „Einrichtungen zum Aufenthalt von Kindern <b>und</b> Jugendlichen" – das sind v. a. weiterführende Schulen sowie Jugendheime, -herbergen und -musikschulen. <b>Nicht</b> dazu zählen lt. amtlichen Anwendungshinweisen (Min. f. Finanzen u. Wirtschaft BW, 11.12.2015) Kitas, Kinderkrippen, reine Grundschulen und Spielplätze. Bundesland oben passend wählen – die Sperrkreise nutzen diesen Wert. Alle Werte ohne Gewähr, maßgeblich ist die Behörde.
           </div>
         </details>
       </div>
@@ -332,8 +332,8 @@ async function analyze(){
   if(map.getZoom()<10)map.setZoom(10);
   setStatus('Lädt Spielhallen & Gebiete für <b>'+lastCity+'</b> …');
   const b=map.getBounds();const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const wantSch=document.getElementById('tgSch').checked; // Schulen/Kitas nur laden, wenn aktiv – hält die Abfrage leicht
-  const schQ=wantSch?`node["amenity"~"^(school|kindergarten|college)$"](${bb});way["amenity"~"^(school|kindergarten|college)$"](${bb});`:'';
+  const wantSch=document.getElementById('tgSch').checked; // Schulen nur laden, wenn aktiv – hält die Abfrage leicht
+  const schQ=wantSch?`node["amenity"~"^(school|college)$"](${bb});way["amenity"~"^(school|college)$"](${bb});`:'';
   const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb});${schQ});out center tags;way["landuse"~"^(commercial|retail|industrial|residential|brownfield|construction)$"](${bb});out geom tags;`;
   try{
     const j=await overpass(q);
@@ -344,9 +344,9 @@ async function analyze(){
       const t=el.tags;if(!t)return;
       if(t.landuse&&el.geometry){newZones.push({lu:t.landuse,pts:el.geometry.map(g=>[g.lat,g.lon])});return;}
       const lat=el.lat||(el.center&&el.center.lat),lng=el.lon||(el.center&&el.center.lon);if(lat==null)return;
-      if(t.amenity==='school'||t.amenity==='kindergarten'||t.amenity==='college'){
+      if(t.amenity==='school'||t.amenity==='college'){
         if(baseSens.some(s=>map.distance(L.latLng(s.lat,s.lng),L.latLng(lat,lng))<40))return;
-        const tn=t.amenity==='kindergarten'?'Kita':t.amenity==='college'?'Berufsschule':'Schule';
+        const tn=t.amenity==='college'?'Berufsschule':'Schule';
         baseSens.push({id:uid++,name:(t.name||tn),lat,lng,source:'osm'});
       }else if(t.leisure||t.shop||t.amenity==='casino'){
         if(base.some(h=>map.distance(L.latLng(h.lat,h.lng),L.latLng(lat,lng))<80))return;
@@ -357,7 +357,7 @@ async function analyze(){
     if(newZones.length)zones=newZones;
     const nGreen=zones.filter(z=>z.lu==='commercial'||z.lu==='retail').length;
     const nSch=sens.filter(s=>s.source==='osm').length;
-    setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete`+(wantSch?` · ${nSch} Schulen/Kitas`:'')+'.');
+    setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete`+(wantSch?` · ${nSch} Schulen`:'')+'.');
     refresh();
   }catch(e){
     refresh();
@@ -381,10 +381,10 @@ function bauVerdict(zone,kgt){switch(zone){
   case 'out35':return {s:'no',t:'Außenbereich – i.d.R. unzulässig'};
   default:return {s:'unset',t:''};}}
 
-function armAdd(t){pendingAdd=t;document.getElementById('armHint').textContent=t==='hall'?'Jetzt in die Karte tippen, um eine Spielhalle zu setzen.':'Jetzt in die Karte tippen, um eine Schule/Kita zu setzen.';}
+function armAdd(t){pendingAdd=t;document.getElementById('armHint').textContent=t==='hall'?'Jetzt in die Karte tippen, um eine Spielhalle zu setzen.':'Jetzt in die Karte tippen, um eine Schule zu setzen.';}
 map.on('click',e=>{const p={lat:e.latlng.lat,lng:e.latlng.lng};
   if(pendingAdd==='hall'){halls.push({id:uid++,name:'Spielhalle '+(halls.length+1),lat:p.lat,lng:p.lng,source:'manual'});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
-  else if(pendingAdd==='sens'){sens.push({id:uid++,name:'Schule/Kita '+(sens.length+1),lat:p.lat,lng:p.lng,source:'manual'});document.getElementById('tgSch').checked=true;pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
+  else if(pendingAdd==='sens'){sens.push({id:uid++,name:'Schule '+(sens.length+1),lat:p.lat,lng:p.lng,source:'manual'});document.getElementById('tgSch').checked=true;pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
   else setActive(p);
 });
 
@@ -485,7 +485,7 @@ function applyLand(){const v=document.getElementById('land').value;
   document.getElementById('schoolDist').value=v.indexOf('BW')===0?500:0;
   refresh();}
 function toggleSchools(){
-  if(document.getElementById('tgSch').checked)analyze(); // lädt Schulen/Kitas live für den aktuellen Ausschnitt
+  if(document.getElementById('tgSch').checked)analyze(); // lädt Schulen live für den aktuellen Ausschnitt
   else{sens=sens.filter(s=>s.source!=='osm');refresh();}
 }
 function exportData(){const fc={type:'FeatureCollection',meta:{stadt:lastCity,mindestabstand_m:getMin()},features:[]};
@@ -502,8 +502,7 @@ function saveState(){try{localStorage.setItem(LS_KEY,JSON.stringify({
   sens:sens.filter(s=>s.source!=='osm'), // OSM-Schulen nicht speichern, die kommen live
   manual:halls.filter(h=>h.source==='manual'),
   land:document.getElementById('land').value,
-  nf:document.getElementById('nfFlae').value,
-  sd:document.getElementById('schoolDist').value
+  nf:document.getElementById('nfFlae').value
 }));}catch(e){}}
 function loadState(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));if(!s)return;
   if(Array.isArray(s.cands))cands=s.cands.map(c=>({...c,id:uid++}));
@@ -511,12 +510,12 @@ function loadState(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));if(!s)
   if(Array.isArray(s.manual))s.manual.forEach(h=>halls.push({...h,id:uid++,source:'manual'}));
   const sel=document.getElementById('land');if(s.land&&[...sel.options].some(o=>o.value===s.land))sel.value=s.land;
   if(s.nf)document.getElementById('nfFlae').value=s.nf;
-  if(s.sd)document.getElementById('schoolDist').value=s.sd;
 }catch(e){}}
 
 // Start: Region sofort zeigen, dann (falls möglich) live ergänzen
 seedDemo();
 loadState();
+applyLand(); // Schulabstand an gewähltes Bundesland koppeln (BaWü 500 m, sonst 0)
 updateCityInfo('Nördlingen','Bayern');
 refresh();
 map.setView([48.8516,10.4879],11); // Start auf Nördlingen (Zielstadt); weitere Hallen via Zoom/Suche
