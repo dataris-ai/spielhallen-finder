@@ -88,11 +88,12 @@
         <input type="text" id="searchBox" placeholder="Stadt eingeben, z. B. Nördlingen" autocomplete="off">
         <div class="row" style="margin-top:8px">
           <select id="land" onchange="applyLand()" style="flex:1.4">
-            <option value="250">Bayern · 250 m</option>
-            <option value="500">Baden-Württemberg · 500 m</option>
-            <option value="350">NRW · 350 m</option>
-            <option value="300">Hessen · 300 m</option>
-            <option value="100">Niedersachsen · 100 m</option>
+            <option value="BY500">Bayern · 500 m (Neuerlaubnis)</option>
+            <option value="BY250">Bayern · 250 m (Bestand bis 2017)</option>
+            <option value="BW500">Baden-Württemberg · 500 m</option>
+            <option value="NW350">NRW · 350 m</option>
+            <option value="HE300">Hessen · 300 m</option>
+            <option value="NI100">Niedersachsen · 100 m</option>
           </select>
           <button class="accent" style="flex:1" onclick="goSearch()">Anzeigen</button>
         </div>
@@ -106,6 +107,8 @@
         <label class="tg"><input type="checkbox" id="tgZone" checked onchange="renderZones()"><span class="swatch" style="background:#34e08a"></span>Mögliche Gebiete (Gewerbe/Zentrum)</label>
         <label class="tg"><input type="checkbox" id="tgInd" onchange="renderZones()"><span class="swatch" style="background:rgba(240,163,56,.5)"></span>Industriegebiete (meist nicht)</label>
         <label class="tg"><input type="checkbox" id="tgRes" onchange="renderZones()"><span class="swatch" style="background:rgba(229,72,77,.5)"></span>Wohngebiete (baurechtlich ausgeschlossen)</label>
+        <label class="tg"><input type="checkbox" id="tgPot" checked onchange="renderZones()"><span class="swatch" style="background:rgba(55,182,214,.5)"></span>Potenzialflächen (Brache/Bau – prüfen)</label>
+        <label class="tg"><input type="checkbox" id="tgSch" checked onchange="refresh()"><span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schulen/Kitas (Jugendschutz)</label>
         <label class="tg"><input type="checkbox" id="tgSat" onchange="setBase()">Luftbild statt Karte</label>
       </div>
 
@@ -113,10 +116,28 @@
         <div class="lbl">Legende</div>
         <div class="legend">
           <span class="swatch" style="background:#34e08a"></span>grün = hier am ehesten möglich<br>
+          <span class="swatch" style="background:rgba(55,182,214,.5)"></span>Potenzialfläche (Brache/Bau) – Baurecht prüfen<br>
           <span class="swatch" style="background:rgba(229,72,77,.5)"></span>rote Fläche = Wohngebiet, ausgeschlossen<br>
           <span class="swatch" style="background:var(--red);border-radius:50%"></span>Spielhalle + Sperrkreis<br>
+          <span class="swatch" style="background:var(--amber);border-radius:50%"></span>Schule/Kita (BaWü: 500 m Abstand)<br>
           → wo <b style="color:var(--green)">grün</b> nicht von <b style="color:var(--red)">rot</b> überdeckt ist: Mietobjekt suchen
         </div>
+      </div>
+
+      <div class="block">
+        <details open>
+          <summary>Bebauungsplan & Steuer prüfen</summary>
+          <div class="body" style="padding-bottom:13px">
+            <b style="color:var(--amber)">Farben ≈ OpenStreetMap, nicht Baurecht.</b> Welches Baugebiet (MK/GE/MI…) wirklich gilt und ob Vergnügungsstätten per B-Plan ausgeschlossen sind (§1 IX BauNVO), steht <b>nur im Bebauungsplan der Gemeinde</b>. Vor Anmietung dort prüfen.
+            <div style="margin-top:10px"><div class="lbl" style="margin-bottom:3px">Vergnügungssteuer <span id="ciCity" style="text-transform:none;letter-spacing:0;color:var(--text)"></span></div><span id="ciTax" class="mini">—</span></div>
+            <div class="links">
+              <a id="ciBplan" target="_blank" rel="noopener">Bebauungsplan</a>
+              <a href="https://atlas.bayern.de/" target="_blank" rel="noopener">BayernAtlas</a>
+              <a href="https://geoportal.bayern.de/bauleitplanungsportal/" target="_blank" rel="noopener">B-Plan Bayern</a>
+              <a href="https://www.geoportal-bw.de/" target="_blank" rel="noopener">Geoportal BW</a>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="block">
@@ -189,7 +210,8 @@
           <div class="body">
             <b>Grüne Flächen</b> = Gewerbe-/Zentrumsflächen lt. OpenStreetMap, also wo eine Spielhalle (Vergnügungsstätte) am ehesten zulässig ist – <b>keine Garantie</b>. Der Bebauungsplan kann Vergnügungsstätten zusätzlich ausschließen (§1 Abs. 9 BauNVO) oder ein Vergnügungsstättenkonzept greifen.<br><br>
             <b>BauNVO:</b> Kerngebiet zulässig · Gewerbegebiet nur ausnahmsweise · Misch-/Dorf-/bes. Wohngebiet nur wenn nicht kerngebietstypisch (≥100 m²) · Wohn-/Industriegebiet verboten.<br><br>
-            <b>Bayern:</b> 250 m zwischen Spielhallen, kein Schulabstand, keine Vergnügungssteuer. <b>BaWü:</b> 500 m + Abstand zu Kinder-/Jugendeinrichtungen. Bundesland oben passend wählen – die Sperrkreise nutzen diesen Wert. Werte ohne Gewähr.
+            <b>Bayern (Art. 10 III BayAGGlüStV):</b> <b>500 m</b> zwischen Spielhallen bei Neuerlaubnis (250 m nur für Bestand mit vollständigem Antrag bis 30.06.2017); <b>kein</b> gesetzlicher Schulabstand; <b>keine</b> Vergnügungssteuer (Bayern erhebt sie landesweit nicht).<br><br>
+            <b>Baden-Württemberg (§42 LGlüG):</b> 500 m zwischen Spielhallen <b>und</b> 500 m zu Einrichtungen für Minderjährige (Schulen/Kitas). Bundesland oben passend wählen – die Sperrkreise nutzen diesen Wert. Alle Werte ohne Gewähr, maßgeblich ist die Behörde.
           </div>
         </details>
       </div>
@@ -209,6 +231,32 @@ let halls=[], cands=[], sens=[], zones=[], active=null, activeZone='', pendingAd
 let activeMarker=null, activeLine=null;
 
 const CITIES={ 'nördlingen':[48.8516,10.4879],'noerdlingen':[48.8516,10.4879],'bopfingen':[48.8569,10.3556],'donauwörth':[48.7186,10.7779],'donauwoerth':[48.7186,10.7779],'aalen':[48.8378,10.0933],'dinkelsbühl':[49.0713,10.3187],'dinkelsbuehl':[49.0713,10.3187],'oettingen':[48.9519,10.6019],'wemding':[48.8744,10.7237],'heidenheim':[48.6781,10.1516],'neresheim':[48.7553,10.3306],'augsburg':[48.3705,10.8978],'münchen':[48.1374,11.5755],'muenchen':[48.1374,11.5755],'nürnberg':[49.4521,11.0767],'nuernberg':[49.4521,11.0767],'ulm':[48.3984,9.9916],'ingolstadt':[48.7665,11.4258],'gunzenhausen':[49.1156,10.7556] };
+
+// Verifizierte Bebauungsplan-Portale + Vergnügungssteuer pro Stadt (Stand: Recherche 2026, ohne Gewähr – immer bei der Gemeinde bestätigen)
+const NOE='https://www.noerdlingen.de/stadt-rathaus-aktuell/stadtplanung/oeffentliche-bekanntmachungen';
+const TAX_BY='<b>0 %</b> – Bayern erhebt landesweit keine Vergnügungssteuer.';
+const CITYINFO={
+  'nördlingen':{bplan:NOE,tax:TAX_BY},'noerdlingen':{bplan:NOE,tax:TAX_BY},
+  'donauwörth':{bplan:'https://www.donauwoerth.de/leben-in-donauwoerth/bauen-und-wohnen/stadtbauamt/stadtplanung-bauleitplanung',tax:TAX_BY},
+  'donauwoerth':{bplan:'https://www.donauwoerth.de/leben-in-donauwoerth/bauen-und-wohnen/stadtbauamt/stadtplanung-bauleitplanung',tax:TAX_BY},
+  'augsburg':{bplan:'https://www.augsburg.de/buergerservice-rathaus/buergerservice/dienste-a-z/aemterweise/leistungen-stadtplanungsamt/bebauungsplan/',tax:TAX_BY},
+  'bopfingen':{bplan:'https://www.bopfingen.de/Startseite/leben+_+wohnen/bebauungsplaene.html',tax:'<b>26 %</b> vom Einspielergebnis (ab 2025, BaWü). Quelle: Stadt/Presse, ohne Gewähr.'},
+  'aalen':{bplan:'https://www.aalen.de/bebauungsplaene.6303.25.htm',tax:'<b>6 %</b> vom <i>Spieleinsatz</i> (andere Basis als Bopfingen; Erhöhung auf 7 % unbestätigt). Ohne Gewähr.'},
+  'heidenheim':{bplan:'https://www.heidenheim.de/leben/stadtentwicklung/bebauungsplan',tax:'unbestätigt (~18 % lt. Presse, abweichende Angaben) – bei der Stadtkasse erfragen.'}
+};
+function norm(s){return (s||'').toLowerCase().replace(/[^a-zäöü]/g,'');}
+function setLand(code){const sel=document.getElementById('land');if([...sel.options].some(o=>o.value===code)){sel.value=code;applyLand();}}
+function updateCityInfo(name,dn){
+  const info=CITYINFO[norm(name)];
+  document.getElementById('ciCity').textContent='· '+name;
+  const bp=document.getElementById('ciBplan');
+  if(info&&info.bplan){bp.href=info.bplan;bp.textContent='Bebauungsplan '+name;}
+  else{bp.href='https://www.google.com/search?q='+encodeURIComponent('Bebauungsplan '+name);bp.textContent='Bebauungsplan '+name+' (Suche)';}
+  const tax=document.getElementById('ciTax');
+  if(info&&info.tax)tax.innerHTML=info.tax;
+  else if(/Bayern/i.test(dn||''))tax.innerHTML=TAX_BY;
+  else tax.innerHTML='kommunal geregelt – bei der Gemeinde erfragen (ohne Gewähr).';
+}
 
 // 25 echte Spielhallen im weiteren Umkreis (Donau-Ries, Ostalb, Heidenheim, Dillingen, Weißenburg). Quelle: OSM/Google Places.
 function seedDemo(){
@@ -253,7 +301,7 @@ function dist(a,b){return map.distance(L.latLng(a.lat,a.lng),L.latLng(b.lat,b.ln
 function fmt(m){return m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';}
 function minDistTo(p,arr){let best=Infinity,who=null;arr.forEach(h=>{const d=dist(p,h);if(d<best){best=d;who=h;}});return{d:best,who};}
 function pinIcon(c,t){return L.divIcon({className:'',html:`<div class="pin" style="background:${c}"><span>${t}</span></div>`,iconSize:[26,26],iconAnchor:[13,26]});}
-function getMin(){return parseFloat(document.getElementById('land').value)||250;}
+function getMin(){return parseFloat((document.getElementById('land').value||'').replace(/\D/g,''))||500;}
 function getSchool(){return parseFloat(document.getElementById('schoolDist').value)||0;}
 function isKGT(){return (parseFloat(document.getElementById('nfFlae').value)||0)>=100;}
 function setStatus(h){document.getElementById('status').innerHTML=h;}
@@ -264,10 +312,12 @@ async function goSearch(){
   try{
     const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=de&q=${encodeURIComponent(raw)}`);
     const j=await r.json();
-    if(j&&j.length){lastCity=j[0].display_name.split(',')[0];map.setView([+j[0].lat,+j[0].lon],14);hint.textContent='';setTimeout(analyze,250);return;}
+    if(j&&j.length){const dn=j[0].display_name;lastCity=dn.split(',')[0];
+      if(/Bayern/i.test(dn))setLand('BY500');else if(/Baden-W[üu]rttemberg/i.test(dn))setLand('BW500');
+      updateCityInfo(lastCity,dn);map.setView([+j[0].lat,+j[0].lon],14);hint.textContent='';setTimeout(analyze,250);return;}
   }catch(e){}
-  const key=raw.toLowerCase().replace(/[^a-zäöü]/g,'');
-  if(CITIES[key]){lastCity=raw;map.setView(CITIES[key],14);hint.textContent='';setTimeout(analyze,250);return;}
+  const key=norm(raw);
+  if(CITIES[key]){lastCity=raw;updateCityInfo(raw,'');map.setView(CITIES[key],14);hint.textContent='';setTimeout(analyze,250);return;}
   hint.textContent='Stadt nicht gefunden (oder Online-Suche im Vorschaufenster blockiert). Lokal/auf Vercel klappt jede Stadt.';
 }
 document.getElementById('searchBox').addEventListener('keydown',e=>{if(e.key==='Enter')goSearch();});
@@ -282,23 +332,30 @@ async function analyze(){
   if(map.getZoom()<10)map.setZoom(10);
   setStatus('Lädt Spielhallen & Gebiete für <b>'+lastCity+'</b> …');
   const b=map.getBounds();const bb=`${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb}););out center tags;way["landuse"~"^(commercial|retail|industrial|residential)$"](${bb});out geom tags;`;
+  const q=`[out:json][timeout:40];(node["leisure"="adult_gaming_centre"](${bb});way["leisure"="adult_gaming_centre"](${bb});node["shop"="gambling"](${bb});way["shop"="gambling"](${bb});node["amenity"="casino"](${bb});way["amenity"="casino"](${bb});node["amenity"~"^(school|kindergarten|college)$"](${bb});way["amenity"~"^(school|kindergarten|college)$"](${bb}););out center tags;way["landuse"~"^(commercial|retail|industrial|residential|brownfield|construction)$"](${bb});out geom tags;`;
   try{
     const j=await overpass(q);
     const base=halls.filter(h=>h.source==='seed'||h.source==='manual'); // kuratierte bleiben, OSM ergänzt
+    const baseSens=sens.filter(s=>s.source!=='osm'); // selbst gesetzte Schulen bleiben, OSM ergänzt
     const newZones=[];
     (j.elements||[]).forEach(el=>{
-      if(el.tags&&el.tags.landuse&&el.geometry){newZones.push({lu:el.tags.landuse,pts:el.geometry.map(g=>[g.lat,g.lon])});}
-      else if(el.tags&&(el.tags.leisure||el.tags.shop||el.tags.amenity)){
-        const lat=el.lat||(el.center&&el.center.lat),lng=el.lon||(el.center&&el.center.lon);if(lat==null)return;
+      const t=el.tags;if(!t)return;
+      if(t.landuse&&el.geometry){newZones.push({lu:t.landuse,pts:el.geometry.map(g=>[g.lat,g.lon])});return;}
+      const lat=el.lat||(el.center&&el.center.lat),lng=el.lon||(el.center&&el.center.lon);if(lat==null)return;
+      if(t.amenity==='school'||t.amenity==='kindergarten'||t.amenity==='college'){
+        if(baseSens.some(s=>map.distance(L.latLng(s.lat,s.lng),L.latLng(lat,lng))<40))return;
+        const tn=t.amenity==='kindergarten'?'Kita':t.amenity==='college'?'Berufsschule':'Schule';
+        baseSens.push({id:uid++,name:(t.name||tn),lat,lng,source:'osm'});
+      }else if(t.leisure||t.shop||t.amenity==='casino'){
         if(base.some(h=>map.distance(L.latLng(h.lat,h.lng),L.latLng(lat,lng))<80))return;
-        base.push({id:uid++,name:(el.tags.name||el.tags.brand||'Spielhalle (OSM)'),lat,lng,source:'osm'});
+        base.push({id:uid++,name:(t.name||t.brand||'Spielhalle (OSM)'),lat,lng,source:'osm'});
       }
     });
-    halls=base;
+    halls=base;sens=baseSens;
     if(newZones.length)zones=newZones;
-    const nGreen=zones.filter(z=>z.lu!=='industrial'&&z.lu!=='residential').length;
-    setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete grün markiert.`);
+    const nGreen=zones.filter(z=>z.lu==='commercial'||z.lu==='retail').length;
+    const nSch=sens.filter(s=>s.source==='osm').length;
+    setStatus(`<b>${lastCity}</b> · ${halls.length} Spielhallen · ${nGreen} mögliche Gebiete · ${nSch} Schulen/Kitas.`);
     refresh();
   }catch(e){
     refresh();
@@ -325,7 +382,7 @@ function bauVerdict(zone,kgt){switch(zone){
 function armAdd(t){pendingAdd=t;document.getElementById('armHint').textContent=t==='hall'?'Jetzt in die Karte tippen, um eine Spielhalle zu setzen.':'Jetzt in die Karte tippen, um eine Schule/Kita zu setzen.';}
 map.on('click',e=>{const p={lat:e.latlng.lat,lng:e.latlng.lng};
   if(pendingAdd==='hall'){halls.push({id:uid++,name:'Spielhalle '+(halls.length+1),lat:p.lat,lng:p.lng,source:'manual'});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
-  else if(pendingAdd==='sens'){sens.push({id:uid++,name:'Schule/Kita '+(sens.length+1),lat:p.lat,lng:p.lng});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
+  else if(pendingAdd==='sens'){sens.push({id:uid++,name:'Schule/Kita '+(sens.length+1),lat:p.lat,lng:p.lng,source:'manual'});pendingAdd=null;document.getElementById('armHint').textContent='';refresh();}
   else setActive(p);
 });
 
@@ -379,12 +436,13 @@ function candStatus(c){const minN=getMin(),schN=getSchool();let ab=null,d=null;
 
 function renderZones(){
   gZones.clearLayers();
-  const showG=document.getElementById('tgZone').checked, showI=document.getElementById('tgInd').checked, showR=document.getElementById('tgRes').checked;
+  const showG=document.getElementById('tgZone').checked, showI=document.getElementById('tgInd').checked, showR=document.getElementById('tgRes').checked, showP=document.getElementById('tgPot').checked;
   zones.forEach(z=>{
-    const cat=z.lu==='industrial'?'ind':z.lu==='residential'?'res':'green';
-    if(cat==='green'&&!showG)return; if(cat==='ind'&&!showI)return; if(cat==='res'&&!showR)return;
+    const cat=z.lu==='industrial'?'ind':z.lu==='residential'?'res':(z.lu==='brownfield'||z.lu==='construction')?'pot':'green';
+    if(cat==='green'&&!showG)return; if(cat==='ind'&&!showI)return; if(cat==='res'&&!showR)return; if(cat==='pot'&&!showP)return;
     const st=cat==='green'?{color:'#168b56',fillColor:'#34e08a',fillOpacity:.33,weight:2}
             :cat==='ind'?{color:'#f0a338',fillColor:'#f0a338',fillOpacity:.15,weight:1}
+            :cat==='pot'?{color:'#2a8aa6',fillColor:'#37b6d6',fillOpacity:.18,weight:1,dashArray:'5,4'}
             :{color:'#e5484d',fillColor:'#e5484d',fillOpacity:.22,weight:1};
     let layer;
     if(z.pts)layer=L.polygon(z.pts,{...st,interactive:false});
@@ -400,7 +458,7 @@ function refresh(){
     L.circle([h.lat,h.lng],{radius:minN,color:'#e5484d',weight:1,fillColor:'#e5484d',fillOpacity:.12,interactive:false}).addTo(gHalls);
     L.circleMarker([h.lat,h.lng],{radius:7,color:'#fff',weight:2,fillColor:'#e5484d',fillOpacity:1}).addTo(gHalls).bindTooltip(h.name,{direction:'top'});
   });
-  sens.forEach(s=>{if(schN>0)L.circle([s.lat,s.lng],{radius:schN,color:'#f0a338',weight:1,fillColor:'#f0a338',fillOpacity:.07,dashArray:'4,5',interactive:false}).addTo(gSens);
+  if(document.getElementById('tgSch').checked)sens.forEach(s=>{if(schN>0)L.circle([s.lat,s.lng],{radius:schN,color:'#f0a338',weight:1,fillColor:'#f0a338',fillOpacity:.07,dashArray:'4,5',interactive:false}).addTo(gSens);
     L.circleMarker([s.lat,s.lng],{radius:6,color:'#fff',weight:2,fillColor:'#f0a338',fillOpacity:1}).addTo(gSens).bindTooltip(s.name,{direction:'top'});});
   cands.forEach(c=>{const st=candStatus(c);const col=st.s==='no'?'#e5484d':st.s==='ok'?'#3fb377':st.s==='maybe'?'#f0a338':'#8ea4b4';
     let tip=c.name;if(st.d!=null)tip+=' · '+fmt(st.d);if(c.zone)tip+=' · '+c.zone;
@@ -420,7 +478,10 @@ function itemEl(o,sub,onDel,bc,bt){const d=document.createElement('div');d.class
   const x=document.createElement('button');x.className='x';x.textContent='×';x.onclick=onDel;d.appendChild(x);
   const nm=d.querySelector('.nm');nm.style.cursor='pointer';nm.onclick=()=>map.setView([o.lat,o.lng],16);return d;}
 
-function applyLand(){refresh();}
+function applyLand(){const v=document.getElementById('land').value;
+  // Nur BaWü schreibt einen Abstand zu Einrichtungen für Minderjährige vor (500 m); sonst 0 (Punkte bleiben zur Info sichtbar)
+  document.getElementById('schoolDist').value=v.indexOf('BW')===0?500:0;
+  refresh();}
 function exportData(){const fc={type:'FeatureCollection',meta:{stadt:lastCity,mindestabstand_m:getMin()},features:[]};
   halls.forEach(h=>fc.features.push({type:'Feature',properties:{kategorie:'spielhalle',name:h.name,quelle:h.source},geometry:{type:'Point',coordinates:[h.lng,h.lat]}}));
   cands.forEach(c=>{const st=candStatus(c);fc.features.push({type:'Feature',properties:{kategorie:'standort',name:c.name,baugebiet:c.zone||'',abstand_m:st.d!=null?Math.round(st.d):null,bewertung:st.s},geometry:{type:'Point',coordinates:[c.lng,c.lat]}});});
@@ -431,7 +492,8 @@ function clearAll(){if(!confirm('Alle Punkte & Gebiete löschen?'))return;halls=
 // Eigene Eingaben (gemerkte Standorte, selbst gesetzte Hallen/Schulen, Einstellungen) lokal speichern
 const LS_KEY='shf_v1';
 function saveState(){try{localStorage.setItem(LS_KEY,JSON.stringify({
-  cands,sens,
+  cands,
+  sens:sens.filter(s=>s.source!=='osm'), // OSM-Schulen nicht speichern, die kommen live
   manual:halls.filter(h=>h.source==='manual'),
   land:document.getElementById('land').value,
   nf:document.getElementById('nfFlae').value,
@@ -439,9 +501,9 @@ function saveState(){try{localStorage.setItem(LS_KEY,JSON.stringify({
 }));}catch(e){}}
 function loadState(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));if(!s)return;
   if(Array.isArray(s.cands))cands=s.cands.map(c=>({...c,id:uid++}));
-  if(Array.isArray(s.sens))sens=s.sens.map(x=>({...x,id:uid++}));
+  if(Array.isArray(s.sens))sens=s.sens.map(x=>({...x,id:uid++,source:'manual'}));
   if(Array.isArray(s.manual))s.manual.forEach(h=>halls.push({...h,id:uid++,source:'manual'}));
-  if(s.land)document.getElementById('land').value=s.land;
+  const sel=document.getElementById('land');if(s.land&&[...sel.options].some(o=>o.value===s.land))sel.value=s.land;
   if(s.nf)document.getElementById('nfFlae').value=s.nf;
   if(s.sd)document.getElementById('schoolDist').value=s.sd;
 }catch(e){}}
@@ -449,6 +511,7 @@ function loadState(){try{const s=JSON.parse(localStorage.getItem(LS_KEY));if(!s)
 // Start: Region sofort zeigen, dann (falls möglich) live ergänzen
 seedDemo();
 loadState();
+updateCityInfo('Nördlingen','Bayern');
 refresh();
 map.setView([48.8516,10.4879],11); // Start auf Nördlingen (Zielstadt); weitere Hallen via Zoom/Suche
 analyze();
